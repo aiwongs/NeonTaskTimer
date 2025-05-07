@@ -32,7 +32,7 @@ English README | 中文 README
 
 ##🎥 演示
 感受霓虹光晕与星际动画的震撼效果！
-![NeonTaskTimer 截图](https://github.com/aiwongs/NeonTaskTimer/main/pics/20250507202447.png)
+![NeonTaskTimer 截图](https://github.com/aiwongs/NeonTaskTimer/blob/main/pics/20250507202447.png)
 
 ##🛠️ 安装指南
 
