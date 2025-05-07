@@ -3,7 +3,7 @@ NeonTaskTimer 🚀
 NeonTaskTimer 是一款炫酷的任务定时器，采用 HTML、CSS 和 JavaScript 打造。它融合了科幻风格的霓虹星际背景和强大的任务管理功能，让用户可以轻松定时和播放音频任务。无论是开发者、爱好者，还是追求视觉震撼的用户，这款工具都将为你带来非凡体验！🌌
 English README | 中文 README
 
-✨ 功能亮点
+##✨ 功能亮点
 
 任务定时：
 支持添加最多 10 个任务，可自定义任务名称和 MP3 文件。
@@ -30,10 +30,11 @@ English README | 中文 README
 实时显示系统时间。
 交互式日期时间选择器，简化任务定时。
 
-🎥 演示
+##🎥 演示
 感受霓虹光晕与星际动画的震撼效果！
+![NeonTaskTimer 截图](https://github.com/aiwongs/NeonTaskTimer/main/pics/20250507202447.png)
 
-🛠️ 安装指南
+##🛠️ 安装指南
 
 按照以下步骤在本地运行 NeonTaskTimer：
 前提条件
@@ -59,7 +60,7 @@ live-server
 访问应用：
 打开浏览器，访问 http://localhost:8000
 
-🚀 使用方法
+##🚀 使用方法
 
 添加任务：
 点击 添加任务 按钮，创建新的任务卡（最多 10 个）。
@@ -86,7 +87,7 @@ live-server
 沉浸于旋转的星云、飞驰的流星和漂浮的 UFO 光点。
 观察任务卡在激活时的霓虹爆闪和呼吸动画。
 
-🤝 贡献指南
+##🤝 贡献指南
 我们欢迎社区贡献，共同让 NeonTaskTimer 更出色！以下是参与方式：
 
 Fork 仓库：
@@ -116,10 +117,10 @@ git checkout -b feature/your-feature
 增强日期时间选择器，支持键盘输入。
 优化低端设备的性能。
 
-📜 许可证
+##📜 许可证
 本项目采用 MIT 许可证，详情见 LICENSE 文件。
 
-🌟 致谢
+##🌟 致谢
 
 由 aiwongs 用 ❤️ 打造。
 灵感源自科幻 UI 设计与星际美学。
