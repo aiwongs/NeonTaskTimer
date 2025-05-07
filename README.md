@@ -91,7 +91,7 @@ live-server
 我们欢迎社区贡献，共同让 NeonTaskTimer 更出色！以下是参与方式：
 
 Fork 仓库：
-在 GitHub 上点击“Fork”按钮，克隆你的 Fork：git clone https://github.com/YOUR_USERNAME/NeonTaskTimer.git
+在 GitHub 上点击“Fork”按钮，克隆你的 Fork：git clone https://github.com/aiwongs/NeonTaskTimer.git
 
 创建分支：
 git checkout -b feature/your-feature
