@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP3 播放器</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background-color: #1a1a1a;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  perspective: 1000px;
+}
+
+/* 星云涡流 */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), #1e1b4b 70%, #2e1065);
+  opacity: 0.5;
+  animation: vortex 30s linear infinite;
+  z-index: 0;
+}
+
+/* 背景光晕 */
+body::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent);
+  transform: translate(-50%, -50%);
+  animation: glow 10s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes vortex {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes glow {
+  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+.container {
+  max-width: 450px;
+  margin: 20px auto;
+  padding: 10px;
+  background-color: rgba(128, 128, 128, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 10;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 系统时间 */
+#systemTime {
+  position: sticky;
+  top: 0;
+  text-align: center;
+  padding: 8px;
+  background: linear-gradient(to right, rgba(200, 200, 200, 0.2), rgba(150, 150, 200, 0.2));
+  color: #fff;
+  font-size: 14px;
+  border-radius: 6px;
+  margin: 0 auto;
+  width: 90%;
+  z-index: 12;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+/* 版权声明 */
+#copyright {
+  position: sticky;
+  bottom: 0;
+  text-align: center;
+  padding: 8px;
+  background: linear-gradient(to right, rgba(200, 200, 200, 0.2), rgba(150, 150, 200, 0.2));
+  color: #fff;
+  font-size: 12px;
+  border-radius: 6px;
+  margin: 4px auto;
+  width: 90%;
+  z-index: 12;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+  transition: none;
+  cursor: pointer;
+}
+
+/* 任务容器滚动区域 */
+#taskContainer {
+  flex: 1;
+  overflow-y: auto;
+  margin: 8px 0;
+  max-height: calc(80vh - 100px);
+  width: 95%;
+}
+
+/* 美化滚动条 */
+#taskContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+#taskContainer::-webkit-scrollbar-track {
+  background: #333;
+  border-radius: 4px;
+}
+
+#taskContainer::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #333, #555);
+  border-radius: 4px;
+}
+
+#taskContainer::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #444, #666);
+}
+
+.task-container {
+  border: 2px solid rgba(68, 68, 68, 0.5);
+  padding: 5px;
+  padding-bottom: 24px;
+  margin: 5px 0;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  z-index: 10;
+  box-sizing: border-box;
+  animation: fadeIn 0.5s ease-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  background: linear-gradient(to right, var(--start-color), var(--end-color));
+  opacity: 0.95;
+}
+
+.task-container.minimized {
+  height: 30px;
+  overflow: hidden;
+}
+
+.task-container.minimized .input-group,
+.task-container.minimized .status {
+  display: none;
+}
+
+.task-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.5), transparent);
+}
+
+.task-highlight {
+  animation: highlight 0.3s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 0.95; transform: translateY(0); }
+}
+
+@keyframes highlight {
+  0% { box-shadow: 0 0 5px var(--highlight-color); opacity: 0.85; }
+  50% { box-shadow: 0 0 30px var(--highlight-color); opacity: 1; }
+  100% { box-shadow: 0 0 5px var(--highlight-color); opacity: 0.85; }
+}
+
+.close-button {
+  background-color: #ff4444;
+  color: #ffffff;
+  border: none;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border-radius: 50%;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  z-index: 11;
+}
+
+.close-button:hover {
+  background-color: #cc0000;
+  transform: scale(1.1);
+}
+
+.custom-task,
+.audio-path,
+.set-time {
+  width: calc(100% - 85px);
+}
+
+.input-group {
+  margin: 2px 0;
+}
+
+.input-group input[type="text"],
+.input-group .select {
+  width: calc(50% - 5px);
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+}
+
+.input-group .select {
+  width: calc(100% - 20px);
+}
+
+.input-group .button {
+  width: 70px;
+  margin: 2px;
+}
+
+.button {
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.button:hover {
+  background-color: #45a049;
+}
+
+.button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pauseButton,
+.stopButton {
+  margin-left: 4px;
+}
+
+.input-group.add-task {
+  margin: 4px auto;
+  width: 90%;
+  text-align: center;
+}
+
+#addTaskButton {
+  width: 90%;
+  background: linear-gradient(to right, rgba(200, 200, 200, 0.2), rgba(150, 150, 200, 0.2));
+  padding: 8px;
+  margin: 4px auto;
+  font-size: 14px;
+  border-radius: 6px;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+#addTaskButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+select.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input[disabled] {
+  background-color: #e6e6e6;
+  cursor: not-allowed;
+}
+
+.status {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--status-bg, rgba(0, 0, 0, 0.1));
+  padding: 4px;
+  font-size: 11px;
+  color: var(--status-color, #333);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* 时间选择控件 */
+.datetime-picker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  width: 200px;
+  display: none;
+  color: #000;
+  opacity: 0.95;
+}
+
+.datetime-picker select {
+  width: 60px;
+  margin: 2px;
+  padding: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #000;
+}
+
+.datetime-picker .buttons {
+  margin-top: 8px;
+  text-align: right;
+}
+
+.datetime-picker .buttons button {
+  margin-left: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.datetime-picker .buttons button:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+/* 隧道线框 */
+.tunnel-frame {
+  position: absolute;
+  border: 2px solid transparent;
+  border-image: linear-gradient(45deg, #d8b4fe, #f9a8d4) 1;
+  border-radius: 50%;
+  background: none;
+  z-index: 1;
+  transform-origin: center;
+  will-change: transform, width, height, opacity;
+}
+
+/* 场景线框 */
+.scene-shape {
+  position: absolute;
+  border: 2px solid var(--shape-color);
+  background: none;
+  z-index: 1;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  will-change: transform, opacity;
+}
+
+.scene-square {
+  width: 60px;
+  height: 60px;
+}
+
+.scene-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+}
+
+.scene-triangle {
+  width: 0;
+  height: 0;
+  border-left: 30px solid transparent;
+  border-right: 30px solid transparent;
+  border-bottom: 52px solid transparent;
+  border-bottom-color: var(--shape-color);
+}
+
+.scene-line {
+  width: 60px;
+  height: 2px;
+}
+
+.scene-small .scene-square,
+.scene-small .scene-circle {
+  width: 30px;
+  height: 30px;
+}
+
+.scene-small .scene-triangle {
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 26px solid transparent;
+  border-bottom-color: var(--shape-color);
+}
+
+.scene-small .scene-line {
+  width: 30px;
+  height: 2px;
+}
+
+.scene-large .scene-square,
+.scene-large .scene-circle {
+  width: 90px;
+  height: 90px;
+}
+
+.scene-large .scene-triangle {
+  border-left: 45px solid transparent;
+  border-right: 45px solid transparent;
+  border-bottom: 78px solid transparent;
+  border-bottom-color: var(--shape-color);
+}
+
+.scene-large .scene-line {
+  width: 90px;
+  height: 2px;
+}
+
+/* 小粒子 */
+.mini-particle {
+  position: absolute;
+  background: var(--particle-color);
+  z-index: 1;
+  box-shadow: 0 0 4px var(--particle-color);
+  will-change: transform, opacity;
+}
+
+.mini-particle-circle {
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+}
+
+.mini-particle-square {
+  width: var(--size);
+  height: var(--size);
+}
+
+.mini-particle-triangle {
+  width: var(--size);
+  height: calc(var(--size) * 0.866);
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+.mini-particle-bar {
+  width: calc(var(--size) * 2);
+  height: calc(var(--size) / 4);
+  border-radius: 1px;
+}
+
+/* 流星 */
+.meteor {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--meteor-color);
+  box-shadow: 0 0 var(--glow-size) var(--meteor-color), 0 0 calc(var(--glow-size) * 2) var(--meteor-color);
+  z-index: 2;
+  will-change: transform, opacity;
+  transform: scaleX(1.2);
+}
+
+/* Canvas 尾迹 */
+#meteor-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* UFO圆点 */
+.ufo-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot-color);
+  box-shadow: 0 0 8px var(--dot-color);
+  z-index: 2;
+  will-change: transform, opacity;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div id="systemTime"></div>
+  <div id="taskContainer"></div>
+  <div class="input-group add-task">
+    <button id="addTaskButton">添加任务</button>
+  </div>
+  <div id="copyright">Copyright © 2025 aiwongs. All rights reserved.</div>
+</div>
+
+<canvas id="meteor-canvas"></canvas>
+
+<audio id="audioPlayer" loop>
+  <source src="" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio>
+
+<script>
+// 预定义轻快靓丽的颜色（HSL 格式）
+const vibrantColors = [
+  { start: 'hsl(330, 60%, 85%)', end: 'hsl(300, 60%, 85%)' }, // 粉紫
+  { start: 'hsl(200, 60%, 85%)', end: 'hsl(170, 60%, 85%)' }, // 青蓝
+  { start: 'hsl(50, 60%, 85%)', end: 'hsl(80, 60%, 85%)' },   // 黄绿
+  { start: 'hsl(140, 60%, 85%)', end: 'hsl(110, 60%, 85%)' }, // 绿
+  { start: 'hsl(270, 60%, 85%)', end: 'hsl(240, 60%, 85%)' }  // 紫蓝
+];
+
+// 霓虹色（更亮）
+const neonColors = ['#d8b4fe', '#60a5fa', '#f9a8d4', '#5eead4'];
+
+// 任务状态
+const taskStates = {
+  stopped: '状态: 任务停止',
+  invalid: '提示音缺失或无法播放，请检查音频文件！',
+  loaded: '状态: 音频已加载 待设定时间执行',
+  timeSet: '状态: 时间已设置',
+  waiting: '状态: 任务已设定且执行中...',
+  playing: '状态: 任务时间到 请马上执行线下任务',
+  paused: '状态: 任务暂停'
+};
+
+// 更新系统时间
+function updateSystemTime() {
+  const timeElement = document.getElementById('systemTime');
+  function refreshTime() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    timeElement.textContent = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+  refreshTime();
+  setInterval(refreshTime, 1000);
+}
+
+// 生成隧道线框
+function createTunnelFrames() {
+  function generateFrame() {
+    const frame = document.createElement('div');
+    frame.classList.add('tunnel-frame');
+    
+    frame.style.left = `${Math.random() * 60 + 20}%`;
+    frame.style.top = `${Math.random() * 60 + 20}%`;
+    
+    const sizes = [50, 100, 150];
+    const initialSize = sizes[Math.floor(Math.random() * sizes.length)];
+    frame.style.width = `${initialSize}px`;
+    frame.style.height = `${initialSize}px`;
+    
+    const animationId = `tunnel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const duration = initialSize === 50 ? (Math.random() * 0.5 + 1) : initialSize === 100 ? (Math.random() * 0.5 + 1.3) : (Math.random() * 0.5 + 1.6);
+    const styleSheet = document.createElement('style');
+    styleSheet.innerHTML = `
+      @keyframes ${animationId} {
+        0% { width: ${initialSize}px; height: ${initialSize}px; opacity: 0.9; transform: translate(-50%, -50%) rotate(0deg) skew(0deg); }
+        100% { width: 1200px; height: 1200px; opacity: 0; transform: translate(-50%, -50%) rotate(90deg) skew(10deg); }
+      }
+      @keyframes gradient-${animationId} {
+        0% { border-image: linear-gradient(45deg, #d8b4fe, #f9a8d4) 1; }
+        50% { border-image: linear-gradient(45deg, #60a5fa, #5eead4) 1; }
+        100% { border-image: linear-gradient(45deg, #d8b4fe, #f9a8d4) 1; }
+      }
+      .tunnel-frame-${animationId} {
+        animation: ${animationId} ${duration}s ease-out forwards, gradient-${animationId} ${duration * 2}s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    frame.classList.add(`tunnel-frame-${animationId}`);
+    
+    document.body.appendChild(frame);
+    
+    setTimeout(() => {
+      frame.remove();
+      styleSheet.remove();
+    }, duration * 1000);
+    
+    const frames = document.querySelectorAll('.tunnel-frame');
+    if (frames.length > 15) {
+      frames[0].remove();
+    }
+  }
+  
+  function scheduleFrame() {
+    generateFrame();
+    const nextFrame = (Math.random() * 400 + 200);
+    setTimeout(scheduleFrame, nextFrame);
+  }
+  scheduleFrame();
+}
+
+// 生成场景线框
+function createSceneShapes() {
+  const shapes = ['scene-circle', 'scene-square', 'scene-triangle', 'scene-line'];
+  const sizes = ['scene-small', 'scene-medium', 'scene-large'];
+  const shapeCount = 20;
+  for (let i = 0; i < shapeCount; i++) {
+    const shape = document.createElement('div');
+    const shapeType = shapes[Math.floor(Math.random() * shapes.length)];
+    const sizeType = sizes[Math.floor(Math.random() * sizes.length)];
+    shape.classList.add('scene-shape', shapeType, sizeType);
+    
+    shape.style.left = `${Math.random() * 100}vw`;
+    shape.style.top = `${Math.random() * 100}vh`;
+    
+    const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+    shape.style.setProperty('--shape-color', color);
+    if ((shapeType === 'scene-circle' || shapeType === 'scene-square') && Math.random() < 0.2) {
+      shape.style.backgroundColor = color;
+      shape.style.border = 'none';
+      shape.style.filter = 'blur(4px)';
+    } else {
+      shape.style.borderColor = color;
+    }
+    
+    const duration = (Math.random() * 7 + 8).toFixed(2);
+    const scale = (Math.random() * 1.5 + 0.5).toFixed(2);
+    const translateX = (Math.random() * 100 - 50).toFixed(2);
+    const translateY = (Math.random() * 100 - 50).toFixed(2);
+    const rotate = (Math.random() * 720 - 360).toFixed(2);
+    
+    const animationId = `scene_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const styleSheet = document.createElement('style');
+    styleSheet.innerHTML = `
+      @keyframes ${animationId} {
+        0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+        50% { transform: translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotate}deg); opacity: 0.8; }
+        100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+      }
+      @keyframes flicker-${animationId} {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+      }
+      .scene-shape-${animationId} {
+        animation: ${animationId} ${duration}s ease-in-out infinite, flicker-${animationId} 2s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    shape.classList.add(`scene-shape-${animationId}`);
+    
+    document.body.appendChild(shape);
+  }
+}
+
+// 生成小粒子
+function createMiniParticles() {
+  const particleTypes = ['mini-particle-circle', 'mini-particle-square', 'mini-particle-triangle', 'mini-particle-bar'];
+  const particleCount = 30;
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    const particleType = particleTypes[Math.floor(Math.random() * particleTypes.length)];
+    particle.classList.add('mini-particle', particleType);
+    
+    particle.style.left = `${Math.random() * 100}vw`;
+    particle.style.top = `${Math.random() * 100}vh`;
+    
+    const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+    particle.style.setProperty('--particle-color', color);
+    
+    const size = (Math.random() * 4 + 4).toFixed(2); // 4-8px
+    particle.style.setProperty('--size', `${size}px`);
+    
+    const duration = (Math.random() * 5 + 5).toFixed(2); // 5-10秒
+    const translateX = (Math.random() * 100 - 50).toFixed(2);
+    const translateY = (Math.random() * 100 - 50).toFixed(2);
+    const scale = (Math.random() * 0.4 + 0.8).toFixed(2); // 0.8-1.2
+    const rotate = (Math.random() * 720 - 360).toFixed(2);
+    const flickerDuration = (Math.random() * 2 + 1).toFixed(2); // 1-3秒
+    
+    const animationId = `particle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const styleSheet = document.createElement('style');
+    styleSheet.innerHTML = `
+      @keyframes ${animationId} {
+        0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+        50% { transform: translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotate}deg); opacity: 0.6; }
+        100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+      }
+      @keyframes flicker-${animationId} {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+      .mini-particle-${animationId} {
+        animation: ${animationId} ${duration}s ease-in-out infinite, flicker-${animationId} ${flickerDuration}s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    particle.classList.add(`mini-particle-${animationId}`);
+    
+    document.body.appendChild(particle);
+  }
+}
+
+// Canvas 尾迹管理
+const canvas = document.getElementById('meteor-canvas');
+const ctx = canvas.getContext('2d');
+let trails = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function drawTrails() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const now = performance.now();
+  
+  trails = trails.filter(trail => {
+    const elapsed = (now - trail.startTime) / 1000;
+    const opacity = 1 - elapsed / trail.fadeDuration;
+    if (opacity <= 0) return false;
+    
+    ctx.beginPath();
+    ctx.strokeStyle = trail.color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = opacity;
+    ctx.moveTo(trail.x1, trail.y1);
+    ctx.lineTo(trail.x2, trail.y2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+  
+  requestAnimationFrame(drawTrails);
+}
+requestAnimationFrame(drawTrails);
+
+// 生成流星
+function createMeteor() {
+  const meteor = document.createElement('div');
+  meteor.classList.add('meteor');
+  
+  const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+  const glowSize = (Math.random() * 4 + 8).toFixed(2); // 8-12px
+  meteor.style.setProperty('--meteor-color', color);
+  meteor.style.setProperty('--glow-size', `${glowSize}px`);
+  
+  let left, top;
+  const edge = Math.floor(Math.random() * 4);
+  switch (edge) {
+    case 0: // 顶部
+      left = Math.random() * 100;
+      top = 0;
+      break;
+    case 1: // 底部
+      left = Math.random() * 100;
+      top = 100;
+      break;
+    case 2: // 左侧
+      left = 0;
+      top = Math.random() * 100;
+      break;
+    case 3: // 右侧
+      left = 100;
+      top = Math.random() * 100;
+      break;
+  }
+  meteor.style.left = `${left}vw`;
+  meteor.style.top = `${top}vh`;
+  
+  const angle = Math.random() * 2 * Math.PI;
+  const distance = Math.random() * 400 + 800; // 800-1200px
+  const vw = window.innerWidth / 100;
+  const vh = window.innerHeight / 100;
+  const translateX = (distance * Math.cos(angle) / vw).toFixed(2);
+  const translateY = (distance * Math.sin(angle) / vh).toFixed(2);
+  
+  const isAccelerated = Math.random() < 0.7;
+  const duration = isAccelerated ? (Math.random() * 1 + 0.5).toFixed(2) : (Math.random() * 1 + 2).toFixed(2);
+  
+  const animationId = `meteor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const styleSheet = document.createElement('style');
+  styleSheet.innerHTML = `
+    @keyframes ${animationId} {
+      0% { transform: translate(0, 0) scaleX(1.2); opacity: 1; }
+      100% { transform: translate(${translateX}vw, ${translateY}vh) scaleX(1.2); opacity: 0; }
+    }
+    .meteor-${animationId} {
+      animation: ${animationId} ${duration}s cubic-bezier(0, 0, 0.2, 1) forwards;
+    }
+  `;
+  document.head.appendChild(styleSheet);
+  
+  meteor.classList.add(`meteor-${animationId}`);
+  document.body.appendChild(meteor);
+  
+  let lastX = left * vw;
+  let lastY = top * vh;
+  let startTime = performance.now();
+  
+  function updateTrail() {
+    const now = performance.now();
+    const elapsed = (now - startTime) / 1000;
+    if (elapsed > duration) return;
+    
+    const progress = Math.min(elapsed / duration, 1);
+    const currentX = (left + parseFloat(translateX) * progress) * vw;
+    const currentY = (top + parseFloat(translateY) * progress) * vh;
+    
+    if (isAccelerated && Math.hypot(currentX - lastX, currentY - lastY) > 1) {
+      trails.push({
+        x1: lastX,
+        y1: lastY,
+        x2: currentX,
+        y2: currentY,
+        color: color,
+        startTime: now,
+        fadeDuration: Math.random() * 2 + 1
+      });
+    }
+    
+    lastX = currentX;
+    lastY = currentY;
+    requestAnimationFrame(updateTrail);
+  }
+  
+  if (isAccelerated) {
+    requestAnimationFrame(updateTrail);
+  }
+  
+  setTimeout(() => {
+    meteor.remove();
+    styleSheet.remove();
+    createMeteor();
+  }, duration * 1000);
+}
+
+function createMeteors() {
+  const meteorCount = 7;
+  for (let i = 0; i < meteorCount; i++) {
+    setTimeout(createMeteor, Math.random() * 1000);
+  }
+}
+
+// 生成UFO圆点
+function createUFODot() {
+  const dot = document.createElement('div');
+  dot.classList.add('ufo-dot');
+  
+  let posX = Math.random() * window.innerWidth;
+  let posY = Math.random() * window.innerHeight;
+  dot.style.left = `${posX}px`;
+  dot.style.top = `${posY}px`;
+  
+  const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+  dot.style.setProperty('--dot-color', color);
+  
+  const duration = (Math.random() * 2 + 3).toFixed(2);
+  const translateX = (Math.random() * 1200 - 600).toFixed(2);
+  const translateY = (Math.random() * 1200 - 600).toFixed(2);
+  
+  const animationId = `ufo-dot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const styleSheet = document.createElement('style');
+  styleSheet.innerHTML = `
+    @keyframes ${animationId} {
+      0% { transform: translate(0, 0); opacity: 1; }
+      20% { transform: translate(${translateX * 0.2}px, ${translateY * 0.2}px); opacity: 1; }
+      100% { transform: translate(${translateX}px, ${translateY}px); opacity: 0; }
+    }
+    .ufo-dot-${animationId} {
+      animation: ${animationId} ${duration}s ease-out forwards;
+    }
+  `;
+  document.head.appendChild(styleSheet);
+  
+  dot.classList.add(`ufo-dot-${animationId}`);
+  
+  document.body.appendChild(dot);
+  
+  setTimeout(() => {
+    dot.remove();
+    styleSheet.remove();
+    createUFODot();
+  }, duration * 1000);
+}
+
+function createUFODots() {
+  const dotCount = 20;
+  for (let i = 0; i < dotCount; i++) {
+    setTimeout(createUFODot, Math.random() * 1000);
+  }
+}
+
+// 初始化背景和时间
+createTunnelFrames();
+createSceneShapes();
+createMiniParticles();
+createMeteors();
+createUFODots();
+updateSystemTime();
+
+// 时间选择控件
+function createDateTimePicker(taskContainer, inputElement) {
+  const picker = document.createElement('div');
+  picker.classList.add('datetime-picker');
+  picker.style.background = `linear-gradient(to right, ${taskContainer.style.getPropertyValue('--start-color')}, ${taskContainer.style.getPropertyValue('--end-color')})`;
+  picker.style.opacity = '0.95';
+  
+  picker.innerHTML = `
+    <div>
+      <select class="year"></select> 年
+      <select class="month"></select> 月
+      <select class="day"></select> 日
+    </div>
+    <div>
+      <select class="hour"></select> 时
+      <select class="minute"></select> 分
+      <select class="second"></select> 秒
+    </div>
+    <div class="buttons">
+      <button class="cancel">取消</button>
+      <button class="confirm">确定</button>
+    </div>
+  `;
+  taskContainer.appendChild(picker);
+
+  function generateSelectOptions(min, max, selected) {
+    return Array.from({ length: max - min + 1 }, (_, i) => {
+      const value = min + i;
+      return `<option value="${value}" ${value === selected ? 'selected' : ''}>${value}</option>`;
+    }).join('');
+  }
+
+  function showPicker() {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentSecond = now.getSeconds();
+    
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    
+    picker.querySelector('.year').innerHTML = generateSelectOptions(currentYear - 5, currentYear + 5, currentYear);
+    picker.querySelector('.month').innerHTML = generateSelectOptions(1, 12, currentMonth);
+    picker.querySelector('.day').innerHTML = generateSelectOptions(1, daysInMonth, Math.min(currentDay, daysInMonth));
+    picker.querySelector('.hour').innerHTML = generateSelectOptions(0, 23, currentHour);
+    picker.querySelector('.minute').innerHTML = generateSelectOptions(0, 59, currentMinute);
+    picker.querySelector('.second').innerHTML = generateSelectOptions(0, 59, currentSecond);
+    
+    picker.style.display = 'block';
+  }
+
+  function hidePicker() {
+    picker.style.display = 'none';
+  }
+
+  inputElement.addEventListener('click', (e) => {
+    e.preventDefault();
+    showPicker();
+  });
+
+  picker.querySelector('.confirm').addEventListener('click', () => {
+    const year = picker.querySelector('.year').value;
+    const month = String(picker.querySelector('.month').value).padStart(2, '0');
+    const day = String(picker.querySelector('.day').value).padStart(2, '0');
+    const hour = String(picker.querySelector('.hour').value).padStart(2, '0');
+    const minute = String(picker.querySelector('.minute').value).padStart(2, '0');
+    const second = String(picker.querySelector('.second').value).padStart(2, '0');
+    inputElement.value = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+    hidePicker();
+  });
+
+  picker.querySelector('.cancel').addEventListener('click', () => {
+    hidePicker();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!picker.contains(e.target) && e.target !== inputElement) {
+      hidePicker();
+    }
+  });
+}
+
+// 播放器对象
+var player = {
+  tasks: [],
+
+  addTask: function() {
+    if (this.tasks.length >= 10) {
+      alert('任务数量已达上限！');
+      return;
+    }
+    var newTaskContainer = document.createElement('div');
+    newTaskContainer.classList.add('task-container');
+    
+    var colorPair = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
+    newTaskContainer.style.setProperty('--start-color', colorPair.start);
+    newTaskContainer.style.setProperty('--end-color', colorPair.end);
+    newTaskContainer.style.setProperty('--highlight-color', neonColors[Math.floor(Math.random() * neonColors.length)]);
+    
+    var animationId = `flow_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    var styleSheet = document.createElement('style');
+    styleSheet.innerHTML = `
+      @keyframes ${animationId} {
+        0% { left: -100%; }
+        100% { left: 100%; }
+      }
+      .task-container-${animationId}::before {
+        animation: ${animationId} 1.5s linear;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    newTaskContainer.classList.add(`task-container-${animationId}`);
+    
+    newTaskContainer.innerHTML = `
+      <button class="close-button">X</button>
+      <div class="input-group">
+        <select class="task-type select">
+          <option value="1">烧水任务</option>
+          <option value="2">炖煮任务</option>
+          <option value="3">准备任务</option>
+          <option value="4">自定义任务</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <input type="text" class="custom-task input-group" value="烧水任务" disabled>
+      </div>
+      <div class="input-group">
+        <input type="text" class="audio-path input-group" placeholder="MP3路径" readonly>
+        <button class="loadButton button">加载MP3</button>
+        <button class="pauseButton button" disabled>任务暂停</button>
+      </div>
+      <div class="input-group">
+        <input type="text" class="set-time input-group" placeholder="设置播放时间（YYYY-MM-DD HH:mm:ss）">
+        <button class="setTimeButton button">任务执行</button>
+        <button class="stopButton button" disabled>任务停止</button>
+      </div>
+      <div class="status">状态: 任务停止</div>
+    `;
+    document.getElementById('taskContainer').appendChild(newTaskContainer);
+    var task = {
+      container: newTaskContainer,
+      audioPlayer: new Audio(),
+      state: 'stopped',
+      timeoutId: null,
+      countdownId: null,
+      flowIntervalId: null,
+      animationId: animationId,
+      styleSheet: styleSheet,
+      triggerFlow: function() {
+        newTaskContainer.classList.remove(`task-container-${animationId}`);
+        void newTaskContainer.offsetWidth;
+        newTaskContainer.classList.add(`task-container-${animationId}`);
+        var nextFlow = (Math.random() * 25 + 15) * 1000; // 15-40秒
+        task.flowIntervalId = setTimeout(() => task.triggerFlow(), nextFlow);
+      },
+      updateButtonStates: function() {
+        var loadButton = newTaskContainer.querySelector('.loadButton');
+        var pauseButton = newTaskContainer.querySelector('.pauseButton');
+        var setTimeButton = newTaskContainer.querySelector('.setTimeButton');
+        var stopButton = newTaskContainer.querySelector('.stopButton');
+        
+        if (task.state === 'waiting' || task.state === 'playing' || task.state === 'paused') {
+          loadButton.disabled = true;
+          loadButton.classList.add('disabled');
+          setTimeButton.disabled = true;
+          setTimeButton.classList.add('disabled');
+          pauseButton.disabled = false;
+          pauseButton.classList.remove('disabled');
+          stopButton.disabled = false;
+          stopButton.classList.remove('disabled');
+        } else if (task.state === 'invalid') {
+          loadButton.disabled = false;
+          loadButton.classList.remove('disabled');
+          setTimeButton.disabled = true;
+          setTimeButton.classList.add('disabled');
+          pauseButton.disabled = true;
+          pauseButton.classList.add('disabled');
+          stopButton.disabled = true;
+          stopButton.classList.add('disabled');
+        } else {
+          loadButton.disabled = false;
+          loadButton.classList.remove('disabled');
+          setTimeButton.disabled = false;
+          setTimeButton.classList.remove('disabled');
+          pauseButton.disabled = true;
+          pauseButton.classList.add('disabled');
+          stopButton.disabled = true;
+          stopButton.classList.add('disabled');
+        }
+      },
+      updateTaskTypeState: function() {
+        var taskTypeSelect = newTaskContainer.querySelector('.task-type');
+        var customTaskInput = newTaskContainer.querySelector('.custom-task');
+        if (task.state === 'waiting' || task.state === 'playing' || task.state === 'paused') {
+          taskTypeSelect.disabled = true;
+          taskTypeSelect.classList.add('disabled');
+          customTaskInput.disabled = true;
+          customTaskInput.classList.add('disabled');
+        } else {
+          taskTypeSelect.disabled = false;
+          taskTypeSelect.classList.remove('disabled');
+          var selectedValue = taskTypeSelect.value;
+          customTaskInput.disabled = selectedValue !== '4';
+          customTaskInput.classList.toggle('disabled', selectedValue !== '4');
+        }
+      },
+      updateStatusStyles: function() {
+        var statusDisplay = newTaskContainer.querySelector('.status');
+        if (task.state === 'waiting' || task.state === 'playing') {
+          statusDisplay.style.setProperty('--status-bg', 'linear-gradient(to right, hsl(120, 60%, 85%), hsl(120, 60%, 65%))');
+          statusDisplay.style.setProperty('--status-color', '#000');
+        } else if (task.state === 'invalid') {
+          statusDisplay.style.setProperty('--status-bg', 'rgba(255, 0, 0, 0.2)');
+          statusDisplay.style.setProperty('--status-color', '#fff');
+        } else {
+          statusDisplay.style.setProperty('--status-bg', 'rgba(0, 0, 0, 0.1)');
+          statusDisplay.style.setProperty('--status-color', '#333');
+        }
+      }
+    };
+    task.audioPlayer.loop = true; // 音频循环播放
+    this.tasks.push(task);
+
+    var taskTypeSelect = newTaskContainer.querySelector('.task-type');
+    var customTaskInput = newTaskContainer.querySelector('.custom-task');
+    var loadButton = newTaskContainer.querySelector('.loadButton');
+    var stopButton = newTaskContainer.querySelector('.stopButton');
+    var pauseButton = newTaskContainer.querySelector('.pauseButton');
+    var setTimeButton = newTaskContainer.querySelector('.setTimeButton');
+    var closeButton = newTaskContainer.querySelector('.close-button');
+    var audioPathInput = newTaskContainer.querySelector('.audio-path');
+    var statusDisplay = newTaskContainer.querySelector('.status');
+    var setTimeInput = newTaskContainer.querySelector('.set-time');
+
+    createDateTimePicker(newTaskContainer, setTimeInput);
+
+    function validateAudio(audioPlayer, onSuccess, onError) {
+      if (!audioPlayer.src) {
+        onError();
+        return;
+      }
+      audioPlayer.load();
+      
+      const timeout = setTimeout(() => {
+        audioPlayer.removeEventListener('canplay', canPlayHandler);
+        audioPlayer.removeEventListener('error', errorHandler);
+        onError();
+      }, 5000);
+      
+      function canPlayHandler() {
+        clearTimeout(timeout);
+        audioPlayer.removeEventListener('canplay', canPlayHandler);
+        audioPlayer.removeEventListener('error', errorHandler);
+        onSuccess();
+      }
+      
+      function errorHandler() {
+        clearTimeout(timeout);
+        audioPlayer.removeEventListener('canplay', canPlayHandler);
+        audioPlayer.removeEventListener('error', errorHandler);
+        onError();
+      }
+      
+      audioPlayer.addEventListener('canplay', canPlayHandler, { once: true });
+      audioPlayer.addEventListener('error', errorHandler, { once: true });
+    }
+
+    function setTaskType() {
+      var selectedValue = taskTypeSelect.value;
+      if (selectedValue === '1') {
+        customTaskInput.value = '烧水任务';
+        customTaskInput.disabled = true;
+        customTaskInput.classList.add('disabled');
+        task.audioPlayer.src = 'music/thriller.ogg';
+        audioPathInput.value = '默认烧水音频';
+        validateAudio(
+          task.audioPlayer,
+          () => {
+            task.state = 'loaded';
+            statusDisplay.textContent = taskStates.loaded;
+            task.updateButtonStates();
+            task.updateTaskTypeState();
+            task.updateStatusStyles();
+          },
+          () => {
+            task.state = 'invalid';
+            statusDisplay.textContent = taskStates.invalid;
+            task.updateButtonStates();
+            task.updateTaskTypeState();
+            task.updateStatusStyles();
+          }
+        );
+      } else if (selectedValue === '2') {
+        customTaskInput.value = '炖煮任务';
+        customTaskInput.disabled = true;
+        customTaskInput.classList.add('disabled');
+        task.audioPlayer.src = 'music/stars.party.ogg';
+        audioPathInput.value = '默认炖煮音频';
+        validateAudio(
+          task.audioPlayer,
+          () => {
+            task.state = 'loaded';
+            statusDisplay.textContent = taskStates.loaded;
+            task.updateButtonStates();
+            task.updateTaskTypeState();
+            task.updateStatusStyles();
+          },
+          () => {
+            task.state = 'invalid';
+            statusDisplay.textContent = taskStates.invalid;
+            task.updateButtonStates();
+            task.updateTaskTypeState();
+            task.updateStatusStyles();
+          }
+        );
+      } else if (selectedValue === '3') {
+        customTaskInput.value = '准备任务';
+        customTaskInput.disabled = true;
+        customTaskInput.classList.add('disabled');
+        task.audioPlayer.src = 'music/noise.mp3';
+        audioPathInput.value = '默认准备音频';
+        validateAudio(
+          task.audioPlayer,
+          () => {
+            task.state = 'loaded';
+            statusDisplay.textContent = taskStates.loaded;
+            task.updateButtonStates();
+            task.updateTaskTypeState();
+            task.updateStatusStyles();
+          },
+          () => {
+            task.state = 'invalid';
+            statusDisplay.textContent = taskStates.invalid;
+            task.updateButtonStates();
+            task.updateTaskTypeState();
+            task.updateStatusStyles();
+          }
+        );
+      } else if (selectedValue === '4') {
+        customTaskInput.value = '自定义任务';
+        customTaskInput.disabled = false;
+        customTaskInput.classList.remove('disabled');
+        task.audioPlayer.src = '';
+        audioPathInput.value = '';
+        task.state = 'stopped';
+        statusDisplay.textContent = taskStates.stopped;
+        task.updateButtonStates();
+        task.updateTaskTypeState();
+        task.updateStatusStyles();
+      }
+    }
+
+    setTaskType();
+
+    taskTypeSelect.addEventListener('change', function() {
+      setTaskType();
+    });
+
+    loadButton.addEventListener('click', function() {
+      var fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'audio/mpeg';
+      fileInput.onchange = function(event) {
+        var file = event.target.files[0];
+        if (file) {
+          var objectURL = URL.createObjectURL(file);
+          audioPathInput.value = file.name;
+          task.audioPlayer.src = objectURL;
+          validateAudio(
+            task.audioPlayer,
+            () => {
+              task.state = 'loaded';
+              statusDisplay.textContent = taskStates.loaded;
+              task.updateButtonStates();
+              task.updateTaskTypeState();
+              task.updateStatusStyles();
+            },
+            () => {
+              task.state = 'invalid';
+              statusDisplay.textContent = taskStates.invalid;
+              task.updateButtonStates();
+              task.updateTaskTypeState();
+              task.updateStatusStyles();
+            }
+          );
+        }
+      };
+      fileInput.click();
+    });
+
+    stopButton.addEventListener('click', function() {
+      task.audioPlayer.pause();
+      task.audioPlayer.currentTime = 0;
+      task.state = 'stopped';
+      clearTimeout(task.timeoutId);
+      clearInterval(task.countdownId);
+      clearInterval(task.flowIntervalId);
+      statusDisplay.textContent = taskStates.stopped;
+      task.container.classList.remove('task-highlight');
+      task.updateButtonStates();
+      task.updateTaskTypeState();
+      task.updateStatusStyles();
+      task.triggerFlow();
+    });
+
+    pauseButton.addEventListener('click', function() {
+      task.audioPlayer.pause();
+      task.state = 'paused';
+      clearTimeout(task.timeoutId);
+      var count = 10;
+      statusDisplay.textContent = `状态: 任务暂停 倒计时: ${count}秒`;
+      if (task.countdownId) {
+        clearInterval(task.countdownId);
+      }
+      task.countdownId = setInterval(function() {
+        count--;
+        statusDisplay.textContent = `状态: 任务暂停 倒计时: ${count}秒`;
+        if (count <= 0) {
+          clearInterval(task.countdownId);
+          if (task.audioPlayer.src) {
+            task.audioPlayer.play().catch(() => {
+              alert('提示音缺失或无法播放，请检查音频文件！');
+              task.audioPlayer.pause();
+              task.state = 'stopped';
+              statusDisplay.textContent = taskStates.stopped;
+              task.container.classList.remove('task-highlight');
+              task.updateButtonStates();
+              task.updateTaskTypeState();
+              task.updateStatusStyles();
+              task.triggerFlow();
+            });
+            task.state = 'playing';
+            statusDisplay.textContent = taskStates.playing;
+            task.container.classList.add('task-highlight');
+          } else {
+            alert('提示音缺失，无法恢复任务！');
+            task.state = 'stopped';
+            statusDisplay.textContent = taskStates.stopped;
+            task.container.classList.remove('task-highlight');
+          }
+          task.updateButtonStates();
+          task.updateTaskTypeState();
+          task.updateStatusStyles();
+          task.triggerFlow();
+        }
+      }, 1000);
+      task.container.classList.remove('task-highlight');
+      task.updateButtonStates();
+      task.updateTaskTypeState();
+      task.updateStatusStyles();
+      task.triggerFlow();
+    });
+
+    setTimeButton.addEventListener('click', function() {
+      if (task.state === 'invalid') {
+        alert('提示音缺失或无法播放，请检查音频文件！');
+        return;
+      }
+      var setTime = setTimeInput.value;
+      var customTask = customTaskInput.value;
+      if (!customTask) {
+        alert('请确保任务名称、音频文件和时间均已正确设置！');
+        return;
+      }
+      if (!task.audioPlayer.src) {
+        alert('请确保任务名称、音频文件和时间均已正确设置！');
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(setTime)) {
+        alert('请确保任务名称、音频文件和时间均已正确设置！');
+        return;
+      }
+      var [datePart, timePart] = setTime.split(' ');
+      var [year, month, day] = datePart.split('-').map(Number);
+      var [hours, minutes, seconds] = timePart.split(':').map(Number);
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day) && !isNaN(hours) && !isNaN(minutes) && !isNaN(seconds) &&
+          year >= 2000 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31 &&
+          hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60 && seconds >= 0 && seconds < 60) {
+        // 检查时间是否早于当前时间
+        var now = new Date();
+        var targetTime = new Date(year, month - 1, day, hours, minutes, seconds);
+        if (targetTime <= now) {
+          alert('设定时间早于当前时间，无法触发任务执行！请输入未来的时间（如 YYYY-MM-DD HH:mm:ss 格式）。');
+          setTimeInput.value = '';
+          return;
+        }
+        task.state = 'timeSet';
+        statusDisplay.textContent = taskStates.timeSet;
+        task.updateButtonStates();
+        task.updateTaskTypeState();
+        task.updateStatusStyles();
+        playAtTime(task, year, month, day, hours, minutes, seconds);
+        task.state = 'waiting';
+        statusDisplay.textContent = taskStates.waiting;
+        task.updateButtonStates();
+        task.updateTaskTypeState();
+        task.updateStatusStyles();
+      } else {
+        alert('请确保任务名称、音频文件和时间均已正确设置！');
+      }
+    });
+
+    closeButton.addEventListener('click', function() {
+      newTaskContainer.remove();
+      player.removeTask(task);
+      task.audioPlayer.pause();
+      if (task.audioPlayer.src) {
+        URL.revokeObjectURL(task.audioPlayer.src);
+        task.audioPlayer.src = '';
+      }
+      clearTimeout(task.timeoutId);
+      clearInterval(task.countdownId);
+      clearInterval(task.flowIntervalId);
+      task.container.classList.remove('task-highlight');
+      task.styleSheet.remove();
+    });
+
+    task.triggerFlow();
+  },
+
+  removeTask: function(task) {
+    var index = this.tasks.indexOf(task);
+    if (index !== -1) {
+      this.tasks.splice(index, 1);
+    }
+  }
+};
+
+var addTaskButton = document.getElementById('addTaskButton');
+const copyright = document.getElementById('copyright');
+let isMinimized = false;
+
+for (var i = 0; i < 3; i++) {
+  player.addTask();
+}
+
+addTaskButton.addEventListener('click', function() {
+  player.addTask();
+});
+
+copyright.addEventListener('click', function() {
+  isMinimized = !isMinimized;
+  document.querySelectorAll('.task-container').forEach(task => {
+    task.classList.toggle('minimized', isMinimized);
+  });
+});
+
+function playAtTime(task, year, month, day, hours, minutes, seconds) {
+  var now = new Date();
+  var target = new Date(year, month - 1, day, hours, minutes, seconds);
+  var timeDiff = (target - now) / 1000;
+  task.timeoutId = setTimeout(function() {
+    task.audioPlayer.play().catch(() => {
+      alert('提示音缺失或无法播放，请检查音频文件！');
+      task.audioPlayer.pause();
+      task.state = 'stopped';
+      var statusDisplay = task.container.querySelector('.status');
+      statusDisplay.textContent = taskStates.stopped;
+      task.container.classList.remove('task-highlight');
+      task.updateButtonStates();
+      task.updateTaskTypeState();
+      task.updateStatusStyles();
+      task.triggerFlow();
+    });
+    task.state = 'playing';
+    var statusDisplay = task.container.querySelector('.status');
+    statusDisplay.textContent = taskStates.playing;
+    task.container.classList.add('task-highlight');
+    task.updateButtonStates();
+    task.updateTaskTypeState();
+    task.updateStatusStyles();
+    task.triggerFlow();
+  }, timeDiff * 1000);
+}
+</script>
+
+</body>
+</html>
